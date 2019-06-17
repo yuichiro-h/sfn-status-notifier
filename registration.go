@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sfn"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -86,6 +87,12 @@ func (r *RegistrationExecution) Registration() error {
 					ExecutionArn: *e.ExecutionArn,
 				})
 				if err != nil {
+					if awsErr, ok := err.(awserr.Error); ok {
+						if awsErr.Code() == sfn.ErrCodeStateMachineDoesNotExist {
+							log.Get().Warn("not found state machine", zap.String("name", name))
+							continue
+						}
+					}
 					log.Get().Error(err.Error())
 					return false
 				}
