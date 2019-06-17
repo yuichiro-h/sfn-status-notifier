@@ -89,7 +89,7 @@ func (r *RegistrationExecution) Registration() error {
 				if err != nil {
 					if awsErr, ok := err.(awserr.Error); ok {
 						if awsErr.Code() == sfn.ErrCodeStateMachineDoesNotExist {
-							log.Get().Warn("not found state machine", zap.String("name", name))
+							log.Get().Warn("not found state machine", zap.Any("name", name))
 							continue
 						}
 					}
