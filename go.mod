@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/aws/aws-sdk-go v1.19.26
+	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/guregu/dynamo v1.2.1

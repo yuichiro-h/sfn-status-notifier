@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sfn"
+	"github.com/cenkalti/backoff"
 	"github.com/nlopes/slack"
 	"github.com/pkg/errors"
 	"github.com/yuichiro-h/sfn-status-notifier/config"
@@ -64,9 +65,18 @@ func (r *WatchExecution) Watch() error {
 
 	sfnCli := sfn.New(sess)
 	for _, e := range executions {
-		out, err := sfnCli.DescribeExecution(&sfn.DescribeExecutionInput{
-			ExecutionArn: aws.String(e.ExecutionArn),
-		})
+
+		var out *sfn.DescribeExecutionOutput
+		err := backoff.Retry(func() error {
+			out, err = sfnCli.DescribeExecution(&sfn.DescribeExecutionInput{
+				ExecutionArn: aws.String(e.ExecutionArn),
+			})
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			return nil
+		}, backoff.NewExponentialBackOff())
+
 		if err != nil {
 			return errors.WithStack(err)
 		}

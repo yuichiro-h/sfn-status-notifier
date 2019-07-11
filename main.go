@@ -12,7 +12,6 @@ import (
 func main() {
 	if err := config.Load(os.Getenv("CONFIG_PATH")); err != nil {
 		panic(err)
-		return
 	}
 	log.SetConfig(log.Config{
 		Debug: config.Get().Debug,
