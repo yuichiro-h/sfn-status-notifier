@@ -105,31 +105,40 @@ func (r *WatchExecution) Watch() error {
 			if time.Now().Unix() > deadlineTime.Unix() {
 				log.Get().Info("execution delayed", zap.String("arn", *out.ExecutionArn))
 
-				_, _, err = slack.New(slackConfig.ApiToken).PostMessage(slackConfig.Channel,
-					slack.MsgOptionPostMessageParameters(slack.PostMessageParameters{
-						Username: slackConfig.Username,
-						IconURL:  slackConfig.IconURL,
-					}),
-					slack.MsgOptionAttachments(slack.Attachment{
-						MarkdownIn: []string{"pretext"},
-						Pretext:    "Found *DELAYED* execution",
-						Color:      slackConfig.AttachmentColor,
-						Title:      fmt.Sprintf("%s/%s", stateMachineName, *out.Name),
-						TitleLink:  link,
-						Fields: []slack.AttachmentField{
-							{
-								Title: "Start",
-								Value: out.StartDate.Format("2006-01-02 15:04"),
-								Short: true,
+				err = backoff.Retry(func() error {
+					_, _, err = slack.New(slackConfig.ApiToken).PostMessage(slackConfig.Channel,
+						slack.MsgOptionPostMessageParameters(slack.PostMessageParameters{
+							Username: slackConfig.Username,
+							IconURL:  slackConfig.IconURL,
+						}),
+						slack.MsgOptionAttachments(slack.Attachment{
+							MarkdownIn: []string{"pretext"},
+							Pretext:    "Found *DELAYED* execution",
+							Color:      slackConfig.AttachmentColor,
+							Title:      fmt.Sprintf("%s/%s", stateMachineName, *out.Name),
+							TitleLink:  link,
+							Fields: []slack.AttachmentField{
+								{
+									Title: "Start",
+									Value: out.StartDate.Format("2006-01-02 15:04"),
+									Short: true,
+								},
+								{
+									Title: "Deadline",
+									Value: fmt.Sprintf("%s (within %.2f minutes)",
+										deadlineTime.Format("2006-01-02 15:04"), duration.Minutes()),
+									Short: false,
+								},
 							},
-							{
-								Title: "Deadline",
-								Value: fmt.Sprintf("%s (within %.2f minutes)",
-									deadlineTime.Format("2006-01-02 15:04"), duration.Minutes()),
-								Short: false,
-							},
-						},
-					}))
+						}))
+
+					if err != nil {
+						return err
+					}
+
+					return nil
+				}, backoff.NewExponentialBackOff())
+
 				if err != nil {
 					return errors.WithStack(err)
 				}
@@ -151,30 +160,39 @@ func (r *WatchExecution) Watch() error {
 				zap.String("arn", *out.ExecutionArn),
 				zap.String("status", *out.Status))
 
-			_, _, err = slack.New(slackConfig.ApiToken).PostMessage(slackConfig.Channel,
-				slack.MsgOptionPostMessageParameters(slack.PostMessageParameters{
-					Username: slackConfig.Username,
-					IconURL:  slackConfig.IconURL,
-				}),
-				slack.MsgOptionAttachments(slack.Attachment{
-					MarkdownIn: []string{"pretext"},
-					Pretext:    fmt.Sprintf("Found *%s* execution", *out.Status),
-					Color:      slackConfig.AttachmentColor,
-					Title:      fmt.Sprintf("%s/%s", stateMachineName, *out.Name),
-					TitleLink:  link,
-					Fields: []slack.AttachmentField{
-						{
-							Title: "Start",
-							Value: out.StartDate.Format("2006-01-02 15:04"),
-							Short: true,
+			err = backoff.Retry(func() error {
+				_, _, err = slack.New(slackConfig.ApiToken).PostMessage(slackConfig.Channel,
+					slack.MsgOptionPostMessageParameters(slack.PostMessageParameters{
+						Username: slackConfig.Username,
+						IconURL:  slackConfig.IconURL,
+					}),
+					slack.MsgOptionAttachments(slack.Attachment{
+						MarkdownIn: []string{"pretext"},
+						Pretext:    fmt.Sprintf("Found *%s* execution", *out.Status),
+						Color:      slackConfig.AttachmentColor,
+						Title:      fmt.Sprintf("%s/%s", stateMachineName, *out.Name),
+						TitleLink:  link,
+						Fields: []slack.AttachmentField{
+							{
+								Title: "Start",
+								Value: out.StartDate.Format("2006-01-02 15:04"),
+								Short: true,
+							},
+							{
+								Title: "Stop",
+								Value: out.StopDate.Format("2006-01-02 15:04"),
+								Short: true,
+							},
 						},
-						{
-							Title: "Stop",
-							Value: out.StopDate.Format("2006-01-02 15:04"),
-							Short: true,
-						},
-					},
-				}))
+					}))
+
+				if err != nil {
+					return err
+				}
+
+				return nil
+			}, backoff.NewExponentialBackOff())
+
 			if err != nil {
 				return errors.WithStack(err)
 			}
