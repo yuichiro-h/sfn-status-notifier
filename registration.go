@@ -80,7 +80,7 @@ func (r *RegistrationExecution) Registration() error {
 		err = sfn.New(sess).ListExecutionsPages(&in, func(o *sfn.ListExecutionsOutput, lastPage bool) bool {
 			for _, e := range o.Executions {
 				if e.StartDate.Unix() < lastSearchedAt.Unix() {
-					return false
+					continue
 				}
 
 				err = repo.CreateExecution(&CreateExecutionInput{
