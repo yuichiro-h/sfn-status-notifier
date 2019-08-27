@@ -32,7 +32,7 @@ func (r *RegistrationExecution) Start() {
 
 	if err := r.Registration(); err != nil {
 		log.Get().Error("failed to registration",
-			zap.String("stacktrace", fmt.Sprintf("%+v", err)))
+			zap.String("cause", fmt.Sprintf("%+v", err)))
 	}
 
 	t := time.NewTicker(time.Second * time.Duration(config.Get().RegistrationInterval))
@@ -44,7 +44,7 @@ func (r *RegistrationExecution) Start() {
 		case <-t.C:
 			if err := r.Registration(); err != nil {
 				log.Get().Error("failed to registration",
-					zap.String("stacktrace", fmt.Sprintf("%+v", err)))
+					zap.String("cause", fmt.Sprintf("%+v", err)))
 			}
 		}
 	}
@@ -80,7 +80,7 @@ func (r *RegistrationExecution) Registration() error {
 		err = sfn.New(sess).ListExecutionsPages(&in, func(o *sfn.ListExecutionsOutput, lastPage bool) bool {
 			for _, e := range o.Executions {
 				if e.StartDate.Unix() < lastSearchedAt.Unix() {
-					continue
+					return false
 				}
 
 				err = repo.CreateExecution(&CreateExecutionInput{
